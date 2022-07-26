@@ -1,0 +1,170 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+rules:
+- apiGroups: [""]
+  resources: ["services","endpoints","pods"]
+  verbs: ["get","watch","list"]
+- apiGroups: ["extensions","networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get","watch","list"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+- kind: ServiceAccount
+  name: external-dns
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: k8s.gcr.io/external-dns/external-dns:v0.10.2
+        args:
+        - --source=service
+        - --source=ingress
+        - --domain-filter=lguplus2backend.tk
+        # - --domain-filter=alb.lguplus2.tk # will make ExternalDNS see only the hosted zones matching provided domain, omit to process all available hosted zones
+        - --provider=aws
+        - --policy=upsert-only # would prevent ExternalDNS from deleting any records, omit to enable full synchronization
+        - --aws-zone-type=public # only look at public hosted zones (valid values are public, private or no value for both)
+        - --registry=txt
+        - --txt-owner-id=Z05623191NWS6KI2A7YFS
+        # - --txt-owner-id=Z07515273VOC62LV51Q5D
+        
+      securityContext:
+        fsGroup: 65534 # For ExternalDNS to be able to read Kubernetes and AWS token files
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cartservice
+  namespace: default
+  labels:
+    app: cartservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cartservice
+      tier: backend
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: cartservice
+        tier: backend
+        track: stable
+    spec:
+      containers:
+      - name: cartservice
+        image: 661241151201.dkr.ecr.ap-northeast-2.amazonaws.com/ecr-for-1:CartService123
+        ports:
+        - containerPort: 8080 # ff
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: productservice
+  namespace: default
+  labels:
+    app: productservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: productservice
+      tier: backend
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: productservice
+        tier: backend
+        track: stable
+    spec:
+      containers:
+      - name: productservice
+        image: 661241151201.dkr.ecr.ap-northeast-2.amazonaws.com/ecr-for-1:ProductService123
+        ports:
+        - containerPort: 8080 # ff
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: purchaseservice
+  namespace: default
+  labels:
+    app: purchaseservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: purchaseservice
+      tier: backend
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: purchaseservice
+        tier: backend
+        track: stable
+    spec:
+      containers:
+      - name: purchaseservice
+        image: 661241151201.dkr.ecr.ap-northeast-2.amazonaws.com/ecr-for-1:PurchaseService123
+        ports:
+        - containerPort: 8080 # ff
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rateservice
+  namespace: default
+  labels:
+    app: rateservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rateservice
+      tier: backend
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: rateservice
+        tier: backend
+        track: stable
+    spec:
+      containers:
+      - name: rateservice
+        image: 661241151201.dkr.ecr.ap-northeast-2.amazonaws.com/ecr-for-1:RateService124
+        ports:
+        - containerPort: 8080 # ff
